@@ -6,13 +6,28 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
+type chapter struct {
+	book  string
+	index uint8
+	url   string
+}
+
+func (c chapter) String() string {
+	return fmt.Sprintf("%s, Chapter %d: %s", c.book, c.index, c.url)
+}
+
 const (
 	baseUrl     = `https://www.biblegateway.com`
 	bookListUrl = `/versions/New-Revised-Standard-Version-NRSV-Bible/#booklist`
+)
+
+var (
+	bookNameRe = regexp.MustCompile(`^.*?search=((?:\d+\+)*\w+)\+\d+&.*$`)
 )
 
 func main() {
@@ -31,7 +46,14 @@ func main() {
 			if isChap {
 				for _, a := range n.Attr {
 					if a.Key == "href" {
-						fmt.Printf("%d: %s%s\n", chap, baseUrl, a.Val)
+						m := bookNameRe.FindAllStringSubmatch(a.Val, -1)
+						if m == nil {
+							continue
+						}
+						rawBookName := m[0][1]
+						bookName := strings.Replace(rawBookName, "+", " ", -1)
+						c := chapter{bookName, chap, fmt.Sprintf("%s%s", baseUrl, a.Val)}
+						fmt.Printf("%s\n", c)
 						break
 					}
 				}
