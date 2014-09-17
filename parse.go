@@ -21,17 +21,20 @@ func (c chapter) String() string {
 	return fmt.Sprintf("%s, Chapter %d: %s", c.book, c.index, c.url)
 }
 
+type chapterHandler func(chapter)
+type bookList map[string][]chapter
+
 const (
 	baseUrl     = `https://www.biblegateway.com`
 	bookListUrl = `/versions/New-Revised-Standard-Version-NRSV-Bible/#booklist`
 )
 
 var (
-	bookNameRe = regexp.MustCompile(`^.*?search=((?:\d+\+)*\w+)\+\d+&.*$`)
+	bookNameRe = regexp.MustCompile(`(?i)^.*?search=((?:\d+\+)*\w+)\+\d+&.*$`)
 )
 
 func main() {
-	s, err := getMainPage()
+	s, err := getTocPageText()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,34 +42,48 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var f func(*html.Node)
-	f = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
-			isChap, chap := isChapterLink(n)
-			if isChap {
-				for _, a := range n.Attr {
-					if a.Key == "href" {
-						m := bookNameRe.FindAllStringSubmatch(a.Val, -1)
-						if m == nil {
-							continue
-						}
-						rawBookName := m[0][1]
-						bookName := strings.Replace(rawBookName, "+", " ", -1)
-						c := chapter{bookName, chap, fmt.Sprintf("%s%s", baseUrl, a.Val)}
-						fmt.Printf("%s\n", c)
-						break
-					}
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
-		}
-	}
-	f(doc)
+	findChapters(doc, func(ch chapter) {
+		fmt.Printf("%s\n", ch)
+	})
 }
 
-func getMainPage() (string, error) {
+// TODO: wrap in channel init and send from handler
+func findChapters(n *html.Node, handler chapterHandler) {
+	if n.Type == html.ElementNode && n.Data == "a" {
+		handleAnchorNode(n, handler)
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		findChapters(c, handler)
+	}
+}
+
+func handleAnchorNode(n *html.Node, handler chapterHandler) {
+	isChap, chap := isChapterLink(n)
+	if !isChap {
+		return
+	}
+	for _, a := range n.Attr {
+		if a.Key != "href" {
+			continue
+		}
+		c, err := buildChapterFromHref(a, chap)
+		if err == nil {
+			handler(c)
+		}
+		break
+	}
+}
+
+func buildChapterFromHref(a html.Attribute, chapIndex uint8) (chapter, error) {
+	m := bookNameRe.FindAllStringSubmatch(a.Val, -1)
+	if m == nil {
+		return chapter{}, fmt.Errorf("href is not book name")
+	}
+	bookName := strings.Replace(m[0][1], "+", " ", -1)
+	return chapter{bookName, chapIndex, fmt.Sprintf("%s%s", baseUrl, a.Val)}, nil
+}
+
+func getTocPageText() (string, error) {
 	res, err := http.Get(baseUrl + bookListUrl)
 	if err != nil {
 		return "", err
