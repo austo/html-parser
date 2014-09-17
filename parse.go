@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+// TODO: before writing more code,
+// refactor into chapter package and add test coverage.
+// chapter package sould deal with http in terms of interfaces.
 type chapter struct {
 	book  string
 	index uint8
@@ -30,7 +33,7 @@ const (
 )
 
 var (
-	bookNameRe = regexp.MustCompile(`(?i)^.*?search=((?:\d+\+)*\w+)\+\d+&.*$`)
+	bookNameRe = regexp.MustCompile(`(?i:^.*?search=((?:\d+\+)*\w+)\+\d+&.*$)`)
 )
 
 func main() {
@@ -47,7 +50,10 @@ func main() {
 	})
 }
 
-// TODO: wrap in channel init and send from handler
+// TODO: wrap in channel init and send from handler,
+// i.e, wrapper function returnd bool done channel,
+// makechapterhandler returns chapterHandler and chapter channel
+// to which chapterHandler func sends chapters.
 func findChapters(n *html.Node, handler chapterHandler) {
 	if n.Type == html.ElementNode && n.Data == "a" {
 		handleAnchorNode(n, handler)
