@@ -41,19 +41,44 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	getChaptersFromPageSource(s)
+}
+
+func getChaptersFromPageSource(s string) {
 	doc, err := html.Parse(strings.NewReader(s))
 	if err != nil {
 		log.Fatal(err)
 	}
-	findChapters(doc, func(ch chapter) {
-		fmt.Printf("%s\n", ch)
-	})
+	chapters, handler := makeHandler()
+	done := getChapters(doc, handler)
+	finished := false
+	for !finished {
+		select {
+		case chap := <-chapters:
+			fmt.Printf("%s\n", chap)
+		case <-done:
+			finished = true
+		}
+	}
 }
 
-// TODO: wrap in channel init and send from handler,
-// i.e, wrapper function returnd bool done channel,
-// makechapterhandler returns chapterHandler and chapter channel
-// to which chapterHandler func sends chapters.
+func makeHandler() (<-chan chapter, chapterHandler) {
+	chapters := make(chan chapter)
+	var f = func(chap chapter) {
+		chapters <- chap
+	}
+	return chapters, f
+}
+
+func getChapters(n *html.Node, handler chapterHandler) <-chan bool {
+	done := make(chan bool)
+	go func() {
+		findChapters(n, handler)
+		done <- true
+	}()
+	return done
+}
+
 func findChapters(n *html.Node, handler chapterHandler) {
 	if n.Type == html.ElementNode && n.Data == "a" {
 		handleAnchorNode(n, handler)
