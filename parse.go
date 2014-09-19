@@ -67,7 +67,7 @@ func getChaptersFromWeb(
 func getChaptersFromPageSource(s string, handler ChapterHandler) (<-chan bool, error) {
 	doc, err := html.Parse(strings.NewReader(s))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	done := getChapters(doc, handler)
 	return done, err

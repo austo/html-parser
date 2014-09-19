@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	html = `<!DOCTYPE html>
+	htmlStr = `<!DOCTYPE html>
 <html>
 
 <body>
@@ -20,12 +20,39 @@ const (
 </body>
 
 </html>`
+	nExpectedChapters = 6
 )
 
 func TestGetChaptersFromPageSource(t *testing.T) {
-	chapters := make([]Chapter)
+	var chapters []Chapter
 	handler := func(chap Chapter) {
-		chapters <- chap
+		chapters = append(chapters, chap)
 	}
+	done, err := getChaptersFromPageSource(htmlStr, handler)
+	if err != nil {
+		t.Error(err)
+	}
+	finished := false
+	for !finished {
+		select {
+		case <-done:
+			finished = true
+		}
+	}
+	nFoundChapters := len(chapters)
+	if nFoundChapters != nExpectedChapters {
+		t.Errorf("incorrect number of chapters: expected %d, had %d\n",
+			nExpectedChapters, nFoundChapters)
+	}
+}
 
+func TestGetChaptersFromPageSourceError(t *testing.T) {
+	handler := func(chap Chapter) {
+		t.Logf("%s", chap)
+	}
+	_, err := getChaptersFromPageSource(`<!-- [CDATA[foo]]`,
+		handler)
+	if err != nil {
+		t.Errorf("error parsing text string: %v\n", err)
+	}
 }
