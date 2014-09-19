@@ -11,21 +11,20 @@ import (
 	"strings"
 )
 
-// TODO: before writing more code,
-// refactor into chapter package and add test coverage.
+// TODO: refactor into chapter package and add test coverage.
 // chapter package sould deal with http in terms of interfaces.
-type chapter struct {
+type Chapter struct {
 	book  string
 	index uint8
 	url   string
 }
 
-func (c chapter) String() string {
+func (c Chapter) String() string {
 	return fmt.Sprintf("%s, Chapter %d: %s", c.book, c.index, c.url)
 }
 
-type chapterHandler func(chapter)
-type bookList map[string][]chapter
+type ChapterHandler func(Chapter)
+type bookList map[string][]Chapter
 
 const (
 	baseUrl     = `https://www.biblegateway.com`
@@ -37,40 +36,52 @@ var (
 )
 
 func main() {
-	s, err := getTocPageText()
+	chapters := make(chan Chapter)
+	handler := func(chap Chapter) {
+		chapters <- chap
+	}
+	done, err := getChaptersFromWeb(baseUrl+bookListUrl, handler)
 	if err != nil {
 		log.Fatal(err)
 	}
-	getChaptersFromPageSource(s)
-}
-
-func getChaptersFromPageSource(s string) {
-	doc, err := html.Parse(strings.NewReader(s))
-	if err != nil {
-		log.Fatal(err)
-	}
-	chapters, handler := makeHandler()
-	done := getChapters(doc, handler)
 	finished := false
 	for !finished {
 		select {
-		case chap := <-chapters:
-			fmt.Printf("%s\n", chap)
+		case ch := <-chapters:
+			fmt.Printf("%s\n", ch)
 		case <-done:
 			finished = true
 		}
 	}
 }
 
-func makeHandler() (<-chan chapter, chapterHandler) {
-	chapters := make(chan chapter)
-	var f = func(chap chapter) {
+func getChaptersFromWeb(
+	url string, handler ChapterHandler) (done <-chan bool, err error) {
+	text, err := getTocPageText(url)
+	if err != nil {
+		return nil, err
+	}
+	return getChaptersFromPageSource(text, handler)
+}
+
+func getChaptersFromPageSource(s string, handler ChapterHandler) (<-chan bool, error) {
+	doc, err := html.Parse(strings.NewReader(s))
+	if err != nil {
+		log.Fatal(err)
+	}
+	done := getChapters(doc, handler)
+	return done, err
+}
+
+func makeHandler() (<-chan Chapter, ChapterHandler) {
+	chapters := make(chan Chapter)
+	var f = func(chap Chapter) {
 		chapters <- chap
 	}
 	return chapters, f
 }
 
-func getChapters(n *html.Node, handler chapterHandler) <-chan bool {
+func getChapters(n *html.Node, handler ChapterHandler) <-chan bool {
 	done := make(chan bool)
 	go func() {
 		findChapters(n, handler)
@@ -79,7 +90,7 @@ func getChapters(n *html.Node, handler chapterHandler) <-chan bool {
 	return done
 }
 
-func findChapters(n *html.Node, handler chapterHandler) {
+func findChapters(n *html.Node, handler ChapterHandler) {
 	if n.Type == html.ElementNode && n.Data == "a" {
 		handleAnchorNode(n, handler)
 	}
@@ -88,7 +99,7 @@ func findChapters(n *html.Node, handler chapterHandler) {
 	}
 }
 
-func handleAnchorNode(n *html.Node, handler chapterHandler) {
+func handleAnchorNode(n *html.Node, handler ChapterHandler) {
 	isChap, chap := isChapterLink(n)
 	if !isChap {
 		return
@@ -105,17 +116,17 @@ func handleAnchorNode(n *html.Node, handler chapterHandler) {
 	}
 }
 
-func buildChapterFromHref(a html.Attribute, chapIndex uint8) (chapter, error) {
+func buildChapterFromHref(a html.Attribute, chapIndex uint8) (Chapter, error) {
 	m := bookNameRe.FindAllStringSubmatch(a.Val, -1)
 	if m == nil {
-		return chapter{}, fmt.Errorf("href is not book name")
+		return Chapter{}, fmt.Errorf("href is not book name")
 	}
 	bookName := strings.Replace(m[0][1], "+", " ", -1)
-	return chapter{bookName, chapIndex, fmt.Sprintf("%s%s", baseUrl, a.Val)}, nil
+	return Chapter{bookName, chapIndex, fmt.Sprintf("%s%s", baseUrl, a.Val)}, nil
 }
 
-func getTocPageText() (string, error) {
-	res, err := http.Get(baseUrl + bookListUrl)
+func getTocPageText(url string) (string, error) {
+	res, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}

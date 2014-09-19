@@ -23,6 +23,9 @@ const (
 )
 
 func TestGetChaptersFromPageSource(t *testing.T) {
-	chapters := make([]chapter)
+	chapters := make([]Chapter)
+	handler := func(chap Chapter) {
+		chapters <- chap
+	}
 
 }
