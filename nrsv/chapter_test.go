@@ -12,7 +12,7 @@ var (
 )
 
 func TestGetChapterText(t *testing.T) {
-	text, err := getRawVerseText(chap, t)
+	text, err := getRawVerseText(chap)
 	if err != nil {
 		t.Error(err)
 	}

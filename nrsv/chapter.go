@@ -6,17 +6,16 @@ import (
 	// "io/ioutil"
 	"net/http"
 	// "regexp"
-	"fmt"
-	"testing"
+	// "fmt"
 )
 
-func getRawVerseText(ch Chapter, t *testing.T) (*html.Node, error) {
+func getRawVerseText(ch Chapter) (*html.Node, error) {
 	res, err := http.Get(ch.url)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
-	return getTextNode(res.Body, t)
+	return getTextNode(res.Body)
 	// bytes, err := ioutil.ReadAll(res.Body)
 	// if err != nil {
 	// 	return
@@ -25,38 +24,29 @@ func getRawVerseText(ch Chapter, t *testing.T) (*html.Node, error) {
 	// return
 }
 
-func getTextNode(r io.Reader, t *testing.T) (n *html.Node, err error) {
+func getTextNode(r io.Reader) (n *html.Node, err error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return
 	}
-	for c := doc.FirstChild; c != nil; c = c.NextSibling {
-		if t != nil {
-			fmt.Printf("%#v\n", c)
-		}
-		if c.Type != html.ElementNode || c.Data != "div" {
-			continue
-		}
-		for _, a := range c.Attr {
+	n = findTextDiv(doc)
+	return
+}
+
+func findTextDiv(n *html.Node) (node *html.Node) {
+	if n.Type == html.ElementNode && n.Data == "div" {
+		for _, a := range n.Attr {
 			if a.Key == "class" && a.Val == "passage-text" {
-				n = c
-				fmt.Printf("%#v\n", *n)
+				node = n
 				return
 			}
 		}
 	}
-	return
-}
-
-func findTextDiv(n *html.Node) (n *html.Node) {
-	if n.Type == html.ElementNode && n.Data == "div" {
-		for _, a := range n.Attr {
-			if a.Key == "class" && a.Val == "passage-text" {
-				return n
-			}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		node = findTextDiv(c)
+		if node != nil {
+			return
 		}
 	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		findTextDiv(c)
-	}
+	return
 }
