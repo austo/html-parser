@@ -13,16 +13,16 @@ var (
 	textDivClassRe = regexp.MustCompile(`(?i:.*?result\-text\-style\-normal.*?$)`)
 )
 
-func getRawVerseText(ch Chapter) (*html.Node, error) {
+func getPassageTextFromWeb(ch Chapter) (*html.Node, error) {
 	res, err := http.Get(ch.url)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
-	return getTextNode(res.Body)
+	return getPassageTextNode(res.Body)
 }
 
-func getTextNode(r io.Reader) (n *html.Node, err error) {
+func getPassageTextNode(r io.Reader) (n *html.Node, err error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return
