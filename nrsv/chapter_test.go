@@ -1,7 +1,13 @@
 package nrsv
 
 import (
+	"io"
+	"os"
 	"testing"
+)
+
+const (
+	chapFilename = "genesis_1.html"
 )
 
 var (
@@ -13,12 +19,28 @@ var (
 
 func TestGetChapterText(t *testing.T) {
 	text, err := getRawVerseText(chap)
-	if err != nil {
-		t.Error(err)
-	}
+	checkError(t, err)
 	t.Log(text)
 }
 
-// func TestGetTextNode(t *testing.T) {
+func TestGetTextNode(t *testing.T) {
+	f := getChapterFile(t)
+	defer f.Close()
+	node, err := getTextNode(f)
+	checkError(t, err)
+	t.Log(node)
+}
 
-// }
+func getChapterFile(t *testing.T) io.ReadCloser {
+	f, err := os.Open(chapFilename)
+	if err != nil {
+		t.Error(err)
+	}
+	return f
+}
+
+func checkError(t *testing.T, err error) {
+	if err != nil {
+		t.Error(err)
+	}
+}
