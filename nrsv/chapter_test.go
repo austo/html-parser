@@ -1,7 +1,6 @@
 package nrsv
 
 import (
-	"code.google.com/p/go.net/html"
 	"io"
 	"os"
 	"testing"
@@ -19,27 +18,25 @@ var (
 )
 
 func TestGetChapterText(t *testing.T) {
-	text, err := getPassageTextFromWeb(chap)
+	text, err := getRawVerseTextNodeFromWeb(chap)
 	checkError(t, err)
-	t.Log(text)
+	// t.Log(text)
+	logPassageText(text)
 }
 
 func TestGetTextNode(t *testing.T) {
-	node := getTestPassageTextNode(t)
-	t.Log(node)
-}
-
-func getTestPassageTextNode(t *testing.T) *html.Node {
 	f := getChapterFile(t)
 	defer f.Close()
-	n, err := getPassageTextNode(f)
+	node, err := getTextNode(f)
 	checkError(t, err)
-	return n
+	t.Logf("%#v\n", node)
 }
 
 func getChapterFile(t *testing.T) io.ReadCloser {
 	f, err := os.Open(chapFilename)
-	checkError(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 	return f
 }
 

@@ -1,8 +1,8 @@
 package nrsv
 
 import (
-	"code.google.com/p/go.net/html"
 	"fmt"
+	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -46,38 +46,6 @@ func GetChaptersFromWeb(
 	}
 	done = getChapters(doc, handler)
 	return
-}
-
-func getTocPageText(url string) (string, error) {
-	res, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	text, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	return string(text), nil
-}
-
-func getChaptersFromPageSource(s string,
-	handler ChapterHandler) (<-chan bool, error) {
-
-	doc, err := html.Parse(strings.NewReader(s))
-	if err != nil {
-		return nil, err
-	}
-	done := getChapters(doc, handler)
-	return done, err
-}
-
-func makeHandler() (<-chan Chapter, ChapterHandler) {
-	chapters := make(chan Chapter)
-	var f = func(chap Chapter) {
-		chapters <- chap
-	}
-	return chapters, f
 }
 
 func getChapters(n *html.Node, handler ChapterHandler) <-chan bool {
@@ -134,4 +102,36 @@ func isChapterLink(n *html.Node) (bool, uint8) {
 		return false, 0
 	}
 	return true, uint8(chap)
+}
+
+func getTocPageText(url string) (string, error) {
+	res, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	text, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		return "", err
+	}
+	return string(text), nil
+}
+
+func getChaptersFromPageSource(s string,
+	handler ChapterHandler) (<-chan bool, error) {
+
+	doc, err := html.Parse(strings.NewReader(s))
+	if err != nil {
+		return nil, err
+	}
+	done := getChapters(doc, handler)
+	return done, err
+}
+
+func makeHandler() (<-chan Chapter, ChapterHandler) {
+	chapters := make(chan Chapter)
+	var f = func(chap Chapter) {
+		chapters <- chap
+	}
+	return chapters, f
 }
