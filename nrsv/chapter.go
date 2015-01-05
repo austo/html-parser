@@ -4,9 +4,10 @@ import (
 	"golang.org/x/net/html"
 	"io"
 	// "io/ioutil"
-	"fmt"
+	// "fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ type verse struct {
 
 var (
 	textDivClassRe = regexp.MustCompile(`(?i:.*?result\-text\-style\-normal.*?$)`)
-	orRe           = regexp.MustCompile(`(?i:^or$)`)
+	numberRe       = regexp.MustCompile(`^\d+$`)
 )
 
 func getRawVerseTextNodeFromWeb(ch Chapter) (*html.Node, error) {
@@ -56,17 +57,18 @@ func findPassageTextDiv(n *html.Node) (node *html.Node) {
 	return
 }
 
-func logPassageText(node *html.Node) {
-	insideFootnote := false
+func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
+	insideFootnote, finished := false, false
+	var v verse
 	// TODO: remember verse number and only advance to next verse
 	// once next verse number has been found.
-	// TODO: break reliably once footnotes have been encountered
 	var f func(n *html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.TextNode {
 			s := strings.TrimSpace(n.Data)
 			if len(s) > 0 {
-				if s == "Footnotes:" || orRe.MatchString(s) {
+				if s == "Footnotes:" {
+					finished = true
 					return
 				}
 				if s[0] == '[' {
@@ -74,13 +76,27 @@ func logPassageText(node *html.Node) {
 				} else if s[0] == ']' {
 					insideFootnote = false
 				} else if !insideFootnote {
-					fmt.Printf("%s\n", s)
+					if numberRe.MatchString(s) {
+						n, _ := strconv.ParseInt(s, 10, 16)
+						if n > 1 {
+							v.text = strings.TrimSpace(v.text)
+							verses = append(verses, v)
+						}
+						v = verse{uint16(n), ""}
+					} else {
+						v.text += s + " "
+					}
 				}
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if finished {
+				return
+			}
 			f(c)
 		}
 	}
 	f(node)
+	verses = append(verses, v)
+	return
 }
