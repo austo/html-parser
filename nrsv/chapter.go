@@ -10,8 +10,14 @@ import (
 	"strings"
 )
 
+type verse struct {
+	number uint16
+	text   string
+}
+
 var (
 	textDivClassRe = regexp.MustCompile(`(?i:.*?result\-text\-style\-normal.*?$)`)
+	orRe           = regexp.MustCompile(`(?i:^or$)`)
 )
 
 func getRawVerseTextNodeFromWeb(ch Chapter) (*html.Node, error) {
@@ -50,14 +56,31 @@ func findPassageTextDiv(n *html.Node) (node *html.Node) {
 	return
 }
 
-func logPassageText(n *html.Node) {
-	if n.Type == html.TextNode {
-		s := strings.TrimSpace(n.Data)
-		if len(s) > 0 {
-			fmt.Printf("%s\n", s)
+func logPassageText(node *html.Node) {
+	insideFootnote := false
+	// TODO: remember verse number and only advance to next verse
+	// once next verse number has been found.
+	// TODO: break reliably once footnotes have been encountered
+	var f func(n *html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.TextNode {
+			s := strings.TrimSpace(n.Data)
+			if len(s) > 0 {
+				if s == "Footnotes:" || orRe.MatchString(s) {
+					return
+				}
+				if s[0] == '[' {
+					insideFootnote = true
+				} else if s[0] == ']' {
+					insideFootnote = false
+				} else if !insideFootnote {
+					fmt.Printf("%s\n", s)
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
 		}
 	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		logPassageText(c)
-	}
+	f(node)
 }
