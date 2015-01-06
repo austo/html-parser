@@ -72,18 +72,10 @@ func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
 					currentVerseNum = verseNum
 					v = verse{verseNum, s}
 				} else {
-					if v.text == "" { // first verse node
-						v.text += s
-					} else { // verse node after footnote
-						v.text += " " + s
-					}
+					v.appendText(s)
 				}
 			} else if isSmallCaps, text := isSmallCapsNode(n); isSmallCaps {
-				if v.text == "" { // first verse node
-					v.text += text
-				} else { // verse node after footnote
-					v.text += " " + text
-				}
+				v.appendText(text)
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -97,8 +89,6 @@ func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
 
 func isVerseNode(n *html.Node) (found bool, verseNum uint16) {
 	parent := n.Parent
-	// TODO: handle small cap span inside verse
-	// (will have span parent with class "small-caps" and span grandparent)
 	if parent.Data != "span" || parent.Parent.Data != "p" {
 		return
 	}
@@ -129,4 +119,12 @@ func isSmallCapsNode(n *html.Node) (found bool, text string) {
 		}
 	}
 	return
+}
+
+func (v *verse) appendText(s string) {
+	if v.text == "" { // first verse node
+		v.text += s
+	} else { // verse node after footnote
+		v.text += " " + s
+	}
 }
