@@ -17,8 +17,9 @@ type verse struct {
 }
 
 var (
-	textDivClassRe = regexp.MustCompile(`(?i:.*?result\-text\-style\-normal.*?$)`)
-	numberRe       = regexp.MustCompile(`^\d+$`)
+	textDivClassRe   = regexp.MustCompile(`(?i:.*?result\-text\-style\-normal.*?$)`)
+	numberRe         = regexp.MustCompile(`^\d+$`)
+	verseTextClassRe = regexp.MustCompile(`^text\s\w+\-\d+\-(\d+).*$`)
 )
 
 func getRawVerseTextNodeFromWeb(ch Chapter) (*html.Node, error) {
@@ -58,45 +59,52 @@ func findPassageTextDiv(n *html.Node) (node *html.Node) {
 }
 
 func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
-	insideFootnote, finished := false, false
-	var v verse
-	// TODO: remember verse number and only advance to next verse
-	// once next verse number has been found.
+	var currentVerseNum uint16 = 1
+	v := verse{currentVerseNum, ""}
 	var f func(n *html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.TextNode {
-			s := strings.TrimSpace(n.Data)
-			if len(s) > 0 {
-				if s == "Footnotes:" {
-					finished = true
-					return
-				}
-				if s[0] == '[' {
-					insideFootnote = true
-				} else if s[0] == ']' {
-					insideFootnote = false
-				} else if !insideFootnote {
-					if numberRe.MatchString(s) {
-						n, _ := strconv.ParseInt(s, 10, 16)
-						if n > 1 {
-							v.text = strings.TrimSpace(v.text)
-							verses = append(verses, v)
-						}
-						v = verse{uint16(n), ""}
+			isVerse, verseNum := isVerseNode(n)
+			if isVerse {
+				s := strings.TrimSpace(n.Data)
+				if verseNum > currentVerseNum { // clean up old verse and make new verse
+					v.text = strings.TrimSpace(v.text)
+					verses = append(verses, v)
+					currentVerseNum = verseNum
+					v = verse{verseNum, s}
+				} else {
+					if v.text == "" { // first verse
+						v.text += s
 					} else {
-						v.text += s + " "
+						v.text += " " + s
 					}
 				}
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if finished {
-				return
-			}
 			f(c)
 		}
 	}
 	f(node)
 	verses = append(verses, v)
+	return
+}
+
+func isVerseNode(n *html.Node) (found bool, verseNum uint16) {
+	parent := n.Parent
+	if parent.Data != "span" || parent.Parent.Data != "p" {
+		return
+	}
+	for _, a := range parent.Attr {
+		if a.Key == "class" {
+			m := verseTextClassRe.FindStringSubmatch(a.Val)
+			if len(m) > 0 {
+				vNum, _ := strconv.ParseInt(m[1], 10, 16)
+				verseNum = uint16(vNum)
+				found = true
+				return
+			}
+		}
+	}
 	return
 }
