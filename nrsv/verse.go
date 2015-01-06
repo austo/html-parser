@@ -78,6 +78,12 @@ func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
 						v.text += " " + s
 					}
 				}
+			} else if isSmallCaps, text := isSmallCapsNode(n); isSmallCaps {
+				if v.text == "" { // first verse node
+					v.text += text
+				} else { // verse node after footnote
+					v.text += " " + text
+				}
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -91,6 +97,8 @@ func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
 
 func isVerseNode(n *html.Node) (found bool, verseNum uint16) {
 	parent := n.Parent
+	// TODO: handle small cap span inside verse
+	// (will have span parent with class "small-caps" and span grandparent)
 	if parent.Data != "span" || parent.Parent.Data != "p" {
 		return
 	}
@@ -103,6 +111,21 @@ func isVerseNode(n *html.Node) (found bool, verseNum uint16) {
 				found = true
 				return
 			}
+		}
+	}
+	return
+}
+
+func isSmallCapsNode(n *html.Node) (found bool, text string) {
+	parent := n.Parent
+	if parent.Data != "span" {
+		return
+	}
+	for _, a := range parent.Attr {
+		if a.Key == "class" && a.Val == "small-caps" {
+			found = true
+			text = strings.TrimSpace(n.Data)
+			return
 		}
 	}
 	return

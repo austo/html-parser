@@ -18,7 +18,10 @@ var (
 		Chapter{
 			"1 Corinthians",
 			12,
-			"https://www.biblegateway.com/passage/?search=1+Corinthians+12&version=NRSV"}}
+			"https://www.biblegateway.com/passage/?search=1+Corinthians+12&version=NRSV"},
+		Chapter{"Deuteronomy",
+			2,
+			"https://www.biblegateway.com/passage/?search=Deuteronomy+2&version=NRSV"}}
 )
 
 func TestGetChapterText(t *testing.T) {
