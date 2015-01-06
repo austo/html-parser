@@ -64,8 +64,7 @@ func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
 	var f func(n *html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.TextNode {
-			isVerse, verseNum := isVerseNode(n)
-			if isVerse {
+			if isVerse, verseNum := isVerseNode(n); isVerse {
 				s := strings.TrimSpace(n.Data)
 				if verseNum > currentVerseNum { // clean up old verse and make new verse
 					v.text = strings.TrimSpace(v.text)
@@ -73,9 +72,9 @@ func getVersesFromPassageTextNode(node *html.Node) (verses []verse) {
 					currentVerseNum = verseNum
 					v = verse{verseNum, s}
 				} else {
-					if v.text == "" { // first verse
+					if v.text == "" { // first verse node
 						v.text += s
-					} else {
+					} else { // verse node after footnote
 						v.text += " " + s
 					}
 				}
