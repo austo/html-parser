@@ -56,5 +56,10 @@ func getChapterVerses(t *testing.T, chap Chapter) {
 	textNode, err := getRawVerseTextNodeFromWeb(chap)
 	checkError(t, err)
 	verses := getVersesFromPassageTextNode(textNode)
-	t.Log(verses)
+	for _, v := range verses {
+		verseRecord, err := v.getRecord(chap)
+		checkError(t, err)
+		t.Log(verseRecord)
+	}
+	// t.Log(verses)
 }

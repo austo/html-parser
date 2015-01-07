@@ -1,14 +1,14 @@
 package nrsv
 
 import (
+	"fmt"
 	"golang.org/x/net/html"
 	"io"
-	// "io/ioutil"
-	// "fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type verse struct {
@@ -16,7 +16,7 @@ type verse struct {
 	text   string
 }
 
-type Verse struct {
+type VerseRecord struct {
 	bookIndex    uint8
 	bookName     string
 	chapterIndex uint8
@@ -29,6 +29,10 @@ var (
 	numberRe         = regexp.MustCompile(`^\d+$`)
 	verseTextClassRe = regexp.MustCompile(`^text\s\w+\-\d+\-(\d+).*$`)
 )
+
+func GetVerseRecordsFromWeb(ch Chapter, wg *sync.WaitGroup, out <-chan VerseRecord) {
+
+}
 
 func getRawVerseTextNodeFromWeb(ch Chapter) (*html.Node, error) {
 	res, err := http.Get(ch.url)
@@ -137,5 +141,16 @@ func (v *verse) appendText(s string) {
 	}
 }
 
-// func (v verse) getRecord(c Chapter) (rv Verse) {
-// }
+func (v verse) getRecord(c Chapter) (vr VerseRecord, err error) {
+	if bookIndex, ok := books[c.book]; ok {
+		vr.bookIndex = bookIndex
+		vr.bookName = c.book
+		vr.chapterIndex = c.index
+	} else {
+		err = fmt.Errorf("invalid book name \"%s\"", c.book)
+		return
+	}
+	vr.verseIndex = v.number
+	vr.text = v.text
+	return
+}
