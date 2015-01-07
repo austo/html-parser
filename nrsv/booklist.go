@@ -1,137 +1,88 @@
 package nrsv
 
-import (
-	"fmt"
-	"golang.org/x/net/html"
-	"io/ioutil"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-)
-
-type Chapter struct {
-	book  string
-	index uint8
-	url   string
-}
-
-func (c Chapter) String() string {
-	return fmt.Sprintf("%s, Chapter %d: %s", c.book, c.index, c.url)
-}
-
-type ChapterHandler func(Chapter)
-type bookList map[string][]Chapter
-
-const (
-	baseUrl     = `https://www.biblegateway.com`
-	bookListUrl = `/versions/New-Revised-Standard-Version-NRSV-Bible/#booklist`
-)
-
-var (
-	bookNameRe = regexp.MustCompile(`(?i:^.*?search=((?:\d+\+)*\w+)\+\d+&.*$)`)
-)
-
-func GetChaptersFromWeb(
-	handler ChapterHandler) (done <-chan bool, err error) {
-
-	res, err := http.Get(baseUrl + bookListUrl)
-	if err != nil {
-		return
-	}
-	doc, err := html.Parse(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return
-	}
-	done = getChapters(doc, handler)
-	return
-}
-
-func getChapters(n *html.Node, handler ChapterHandler) <-chan bool {
-	done := make(chan bool)
-	go func() {
-		findChapters(n, handler)
-		done <- true
-	}()
-	return done
-}
-
-func findChapters(n *html.Node, handler ChapterHandler) {
-	if n.Type == html.ElementNode && n.Data == "a" {
-		handleAnchorNode(n, handler)
-	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		findChapters(c, handler)
-	}
-}
-
-func handleAnchorNode(n *html.Node, handler ChapterHandler) {
-	isChap, chap := isChapterLink(n)
-	if !isChap {
-		return
-	}
-	for _, a := range n.Attr {
-		if a.Key != "href" {
-			continue
-		}
-		c, err := buildChapterFromHref(a, chap)
-		if err == nil {
-			handler(c)
-		}
-		break
-	}
-}
-
-func buildChapterFromHref(a html.Attribute, chapIndex uint8) (Chapter, error) {
-	m := bookNameRe.FindAllStringSubmatch(a.Val, -1)
-	if m == nil {
-		return Chapter{}, fmt.Errorf("href is not book name")
-	}
-	bookName := strings.Replace(m[0][1], "+", " ", -1)
-	return Chapter{bookName, chapIndex, fmt.Sprintf("%s%s", baseUrl, a.Val)}, nil
-}
-
-func isChapterLink(n *html.Node) (bool, uint8) {
-	if n.FirstChild == nil {
-		return false, 0
-	}
-	data := n.FirstChild.Data
-	chap, err := strconv.ParseUint(data, 10, 8)
-	if err != nil {
-		return false, 0
-	}
-	return true, uint8(chap)
-}
-
-func getTocPageText(url string) (string, error) {
-	res, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	text, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	return string(text), nil
-}
-
-func getChaptersFromPageSource(s string,
-	handler ChapterHandler) (<-chan bool, error) {
-
-	doc, err := html.Parse(strings.NewReader(s))
-	if err != nil {
-		return nil, err
-	}
-	done := getChapters(doc, handler)
-	return done, err
-}
-
-func makeHandler() (<-chan Chapter, ChapterHandler) {
-	chapters := make(chan Chapter)
-	var f = func(chap Chapter) {
-		chapters <- chap
-	}
-	return chapters, f
+var books map[string]uint8 = map[string]uint8{
+	"Genesis":            1,
+	"Exodus":             2,
+	"Leviticus":          3,
+	"Numbers":            4,
+	"Deuteronomy":        5,
+	"Joshua":             6,
+	"Judges":             7,
+	"Ruth":               8,
+	"1 Samuel":           9,
+	"2 Samuel":           10,
+	"1 Kings":            11,
+	"2 Kings":            12,
+	"1 Chronicles":       13,
+	"2 Chronicles":       14,
+	"Ezra":               15,
+	"Nehemiah":           16,
+	"Esther":             17,
+	"Job":                18,
+	"Psalm":              19,
+	"Proverbs":           20,
+	"Ecclesiastes":       21,
+	"Song of Solomon":    22,
+	"Isaiah":             23,
+	"Jeremiah":           24,
+	"Lamentations":       25,
+	"Ezekiel":            26,
+	"Daniel":             27,
+	"Hosea":              28,
+	"Joel":               29,
+	"Amos":               30,
+	"Obadiah":            31,
+	"Jonah":              32,
+	"Micah":              33,
+	"Nahum":              34,
+	"Habakkuk":           35,
+	"Zephaniah":          36,
+	"Haggai":             37,
+	"Zechariah":          38,
+	"Malachi":            39,
+	"Matthew":            40,
+	"Mark":               41,
+	"Luke":               42,
+	"John":               43,
+	"Acts":               44,
+	"Romans":             45,
+	"1 Corinthians":      46,
+	"2 Corinthians":      47,
+	"Galatians":          48,
+	"Ephesians":          49,
+	"Philippians":        50,
+	"Colossians":         51,
+	"1 Thessalonians":    52,
+	"2 Thessalonians":    53,
+	"1 Timothy":          54,
+	"2 Timothy":          55,
+	"Titus":              56,
+	"Philemon":           57,
+	"Hebrews":            58,
+	"James":              59,
+	"1 Peter":            60,
+	"2 Peter":            61,
+	"1 John":             62,
+	"2 John":             63,
+	"3 John":             64,
+	"Jude":               65,
+	"Revelation":         66,
+	"Tobit":              67,
+	"Judith":             68,
+	"Greek Esther":       69,
+	"Wisdom":             70,
+	"Sirach":             71,
+	"Baruch":             72,
+	"Letter of Jeremiah": 73,
+	"Prayer of Azariah":  74,
+	"Susanna":            75,
+	"Bel and the Dragon": 76,
+	"1 Maccabees":        77,
+	"2 Maccabees":        78,
+	"1 Esdras":           79,
+	"Prayer of Manasseh": 80,
+	"Psalm 151":          81,
+	"3 Maccabees":        82,
+	"2 Esdras":           83,
+	"4 Maccabees":        84,
 }

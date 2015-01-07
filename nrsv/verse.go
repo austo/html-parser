@@ -16,6 +16,14 @@ type verse struct {
 	text   string
 }
 
+type Verse struct {
+	bookIndex    uint8
+	bookName     string
+	chapterIndex uint8
+	verseIndex   uint16
+	text         string
+}
+
 var (
 	textDivClassRe   = regexp.MustCompile(`(?i:.*?result\-text\-style\-normal.*?$)`)
 	numberRe         = regexp.MustCompile(`^\d+$`)
