@@ -136,3 +136,6 @@ func (v *verse) appendText(s string) {
 		v.text += " " + s
 	}
 }
+
+// func (v verse) getRecord(c Chapter) (rv Verse) {
+// }
