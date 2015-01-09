@@ -25,8 +25,18 @@ var (
 )
 
 func TestGetChapterText(t *testing.T) {
+	records, done := make(chan VerseRecord), make(chan bool)
+	nDone := 0
 	for _, chap := range chapters {
-		getChapterVerses(t, chap)
+		go GetVerseRecordsFromWeb(chap, records, done)
+	}
+	for nDone < len(chapters) {
+		select {
+		case vr := <-records:
+			t.Log(vr)
+		case <-done:
+			nDone++
+		}
 	}
 }
 

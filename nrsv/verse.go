@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 type verse struct {
@@ -30,8 +29,24 @@ var (
 	verseTextClassRe = regexp.MustCompile(`^text\s\w+\-\d+\-(\d+).*$`)
 )
 
-func GetVerseRecordsFromWeb(ch Chapter, wg *sync.WaitGroup, out <-chan VerseRecord) {
-
+func GetVerseRecordsFromWeb(chap Chapter, out chan<- VerseRecord, done chan<- bool) {
+	textNode, err := getRawVerseTextNodeFromWeb(chap)
+	if err != nil {
+		fmt.Println(err)
+		done <- true
+		return
+	}
+	verses := getVersesFromPassageTextNode(textNode)
+	for _, v := range verses {
+		verseRecord, err := v.getRecord(chap)
+		if err != nil {
+			fmt.Println(err)
+			done <- true
+			return
+		}
+		out <- verseRecord
+	}
+	done <- true
 }
 
 func getRawVerseTextNodeFromWeb(ch Chapter) (*html.Node, error) {
