@@ -58,6 +58,10 @@ func (db *Db) InsertVerseRecord(vr nrsv.VerseRecord) error {
 	return db.getCollection().Insert(vr)
 }
 
+func (db *Db) InsertVerseRecords(vrs []interface{}) error {
+	return db.getCollection().Insert(vrs...)
+}
+
 func (db *Db) DeleteVerseRecord(vr nrsv.VerseRecord) (err error) {
 	vk := getVerseKey(vr)
 	info, err := db.getCollection().RemoveAll(vk)
