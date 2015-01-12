@@ -1,0 +1,6 @@
+{
+  "local": {
+    "url": "mongodb://localhost:27017/nrsv",
+    "collection": "verses"
+  }
+}
