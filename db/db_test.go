@@ -3,6 +3,7 @@ package db
 import (
 	"flag"
 	"github.com/austo/html-parser/config"
+	"github.com/austo/html-parser/nrsv"
 	"testing"
 )
 
@@ -13,6 +14,8 @@ var (
 			Collection: "verses",
 		},
 	}
+	vr = nrsv.VerseRecord{42, "Luke", 23, 51,
+		"had not agreed to their plan and action. He came from the Jewish town of Arimathea, and he was waiting expectantly for the kingdom of God."}
 	env = flag.String("e", "local", "environment (e.g. dev, qa, prod, local)")
 )
 
@@ -20,6 +23,18 @@ func TestConnectToDatabase(t *testing.T) {
 	db := getDatabase(t)
 	t.Log(db)
 	db.Close()
+}
+
+func TestVerseInsert(t *testing.T) {
+	db := getDatabase(t)
+	err := db.InsertVerseRecord(vr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.DeleteVerseRecord(vr)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func getDatabase(t *testing.T) *Db {

@@ -16,11 +16,11 @@ type verse struct {
 }
 
 type VerseRecord struct {
-	bookIndex    uint8
-	bookName     string
-	chapterIndex uint8
-	verseIndex   uint16
-	text         string
+	BookIndex    uint8
+	BookName     string
+	ChapterIndex uint8
+	VerseIndex   uint16
+	Text         string
 }
 
 var (
@@ -158,14 +158,14 @@ func (v *verse) appendText(s string) {
 
 func (v verse) getRecord(c Chapter) (vr VerseRecord, err error) {
 	if bookIndex, ok := books[c.book]; ok {
-		vr.bookIndex = bookIndex
-		vr.bookName = c.book
-		vr.chapterIndex = c.index
+		vr.BookIndex = bookIndex
+		vr.BookName = c.book
+		vr.ChapterIndex = c.index
 	} else {
 		err = fmt.Errorf("invalid book name \"%s\"", c.book)
 		return
 	}
-	vr.verseIndex = v.number
-	vr.text = v.text
+	vr.VerseIndex = v.number
+	vr.Text = v.text
 	return
 }
